@@ -1,0 +1,11 @@
+import { Topbar } from "@/components/Topbar";
+import { getApprovals } from "@/lib/data/repository";
+import { decideApproval } from "./actions";
+
+export default async function ApprovalsPage() {
+  const { mode, items } = await getApprovals();
+  const pending = items.filter((item) => item.status === "PENDING");
+  const decided = items.filter((item) => item.status !== "PENDING");
+
+  return <div className="page"><Topbar title="Approval Center" /><section className="pageIntro"><div><div className="eyebrow">EXECUTIVE CONTROL</div><h2>Approval queue</h2><p>Money, launches, sensitive communications and gated actions stop here until you decide. <span className={`modeBadge ${mode}`}>{mode === "live" ? "LIVE" : "PREVIEW"}</span></p></div></section><div className="approvalStack">{pending.length ? pending.map((a) => <article className="approvalDetail" key={a.id}><div className="approvalTop"><span>{a.business} · {a.id}</span><span className={`riskBadge ${a.risk.toLowerCase()}`}>{a.risk}</span></div><h3>{a.title}</h3><strong className="approvalAmount">{a.amount}</strong><p>{a.reason}</p><div className="recommendation">AI recommendation: <strong>{a.recommendation}</strong></div>{mode === "live" ? <form className="approvalActions" action={decideApproval}><input type="hidden" name="id" value={a.id} /><button className="primaryButton" name="status" value="approved" type="submit">Approve</button><button className="dangerButton" name="status" value="rejected" type="submit">Reject</button><button className="quietButton" type="button">Ask AI</button></form> : <div className="configNotice">Preview only — connect Supabase before approvals can be permanently recorded.</div>}</article>) : <section className="panel"><p className="muted">Nothing is awaiting your approval.</p></section>}{decided.length > 0 && <section className="panel"><div className="panelHeader"><div><div className="eyebrow">DECISION HISTORY</div><h3>Recent decisions</h3></div></div>{decided.slice(0, 10).map((a) => <div className="historyRow" key={a.id}><div><strong>{a.title}</strong><small>{a.business}</small></div><span className={`decisionBanner ${a.status.toLowerCase()}`}>{a.status}</span></div>)}</section>}</div></div>;
+}

@@ -1,0 +1,9 @@
+{
+  "name": "StewardHQ",
+  "short_name": "StewardHQ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07101f",
+  "theme_color": "#0b1324",
+  "description": "Executive operating system for multi-business owners, teams, assets, and AI workforce."
+}
