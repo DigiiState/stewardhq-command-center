@@ -32,8 +32,12 @@ export function AICommand() {
     setLoading(true);
     setError(null);
     try {
+      const { data: session } = await supabase.auth.getSession();
       const { data, error: invokeError } = await supabase.functions.invoke('stewardhq-command', {
         body: { command: input },
+        headers: {
+          Authorization: `Bearer ${session.session?.access_token}`
+        }
       });
 
       if (invokeError) throw invokeError;
