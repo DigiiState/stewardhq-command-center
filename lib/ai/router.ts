@@ -1,8 +1,8 @@
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { getExecutiveContext } from "@/lib/data/repository";
-import { ImplementationGateway } from "@/lib/engine/gateway";
-import { AuthorityLevel } from "@/lib/engine/types";
+import { createServiceClient } from "@/lib/supabase/service";
+import { v4 as uuidv4 } from "uuid";
 
 export type Route = "openai" | "claude" | "accio";
 
@@ -25,35 +25,43 @@ export async function routeCommand(message: string) {
   const operatingContext = `\n\nSTEWARDHQ CONTEXT (${context.mode.toUpperCase()}):\n${compactContext(context)}`;
 
   if (route === "accio") {
-    console.log(`[AI ROUTER] Routing to Accio workforce via Task creation.`);
+    console.log(`[AI ROUTER] Routing to Accio workforce via relational Task creation.`);
     
-    // GREEN Fix: Create an asynchronous task in StewardHQ instead of just a synchronous fetch
-    const gateway = new ImplementationGateway();
-    const project = await gateway.ingestSpecification({
+    const supabase = createServiceClient();
+    const projectId = uuidv4();
+    const taskId = uuidv4();
+    const orgId = "530962bb-b554-4ddb-ab5c-8eaa3d5220a8";
+
+    // 1. Create Project record
+    const { error: projError } = await supabase.from("projects").insert({
+      id: projectId,
+      organization_id: orgId,
       name: `AI Execution: ${message.slice(0, 50)}...`,
       description: message,
-      business_id: null,
-      authority_level: AuthorityLevel.GREEN,
-      dod: "Accio result submitted to StewardHQ.",
-      milestones: [
-        {
-          title: "Execution",
-          description: "Perform the requested action.",
-          tasks: [
-            {
-              title: "Execute Command",
-              description: message,
-              authority_level: AuthorityLevel.GREEN
-            }
-          ]
-        }
-      ]
+      status: "ready",
+      priority: "high"
     });
+
+    if (projError) throw new Error(`Project creation failed: ${projError.message}`);
+
+    // 2. Create Task record
+    const { error: taskError } = await supabase.from("tasks").insert({
+      id: taskId,
+      organization_id: orgId,
+      project_id: projectId,
+      title: "Execute Command",
+      description: message,
+      status: "ready",
+      priority: "high"
+    });
+
+    if (taskError) throw new Error(`Task creation failed: ${taskError.message}`);
 
     return { 
       route, 
-      output: `Command accepted. Accio workforce has been assigned task in Project: ${project.name} (${project.id}). Monitoring for result.`,
-      project_id: project.id
+      output: `Command accepted. Accio workforce has been assigned task in Project: AI Execution (${projectId}). Monitoring for result.`,
+      project_id: projectId,
+      task_id: taskId
     };
   }
 
