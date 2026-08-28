@@ -1,6 +1,8 @@
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { getExecutiveContext } from "@/lib/data/repository";
+import { ImplementationGateway } from "@/lib/engine/gateway";
+import { AuthorityLevel } from "@/lib/engine/types";
 
 export type Route = "openai" | "claude" | "accio";
 
@@ -22,60 +24,40 @@ export async function routeCommand(message: string) {
   const context = await getExecutiveContext();
   const operatingContext = `\n\nSTEWARDHQ CONTEXT (${context.mode.toUpperCase()}):\n${compactContext(context)}`;
 
-  if (route === "claude") {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return { route, output: "Technical command identified for Claude. Add ANTHROPIC_API_KEY and ANTHROPIC_MODEL to activate live technical routing." };
-    }
-    if (!process.env.ANTHROPIC_MODEL) {
-      return { route, output: "Claude is connected, but ANTHROPIC_MODEL is not set. Add the current model ID you want StewardHQ to use." };
-    }
-
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    const result = await client.messages.create({
-      model: process.env.ANTHROPIC_MODEL,
-      max_tokens: 1200,
-      system: "You are the CTO and independent technical auditor inside StewardHQ. Use the supplied Business OS context as the source of truth for internal operating facts. Identify technical risk, separate verified facts from assumptions, and finish with the next executable action.",
-      messages: [{ role: "user", content: `${message}${operatingContext}` }],
-    });
-    const text = result.content.find((content) => content.type === "text");
-    return { route, output: text && "text" in text ? text.text : "Claude completed the technical review." };
-  }
-
   if (route === "accio") {
-    console.log(`[AI ROUTER] Routing to Accio Bridge: ${process.env.ACCIO_BRIDGE_URL}`);
-    if (!process.env.ACCIO_BRIDGE_URL) {
-      return { route, output: "Execution command identified for Accio Work. The shared task/run ledger is ready, but the Accio bridge is not connected yet." };
-    }
-
-    const response = await fetch(process.env.ACCIO_BRIDGE_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(process.env.ACCIO_BRIDGE_TOKEN
-          ? { Authorization: `Bearer ${process.env.ACCIO_BRIDGE_TOKEN}` }
-          : {}),
-      },
-      body: JSON.stringify({
-        source: "stewardhq",
-        command: message,
-        context,
-      }),
-      cache: "no-store",
+    console.log(`[AI ROUTER] Routing to Accio workforce via Task creation.`);
+    
+    // GREEN Fix: Create an asynchronous task in StewardHQ instead of just a synchronous fetch
+    const gateway = new ImplementationGateway();
+    const project = await gateway.ingestSpecification({
+      name: `AI Execution: ${message.slice(0, 50)}...`,
+      description: message,
+      business_id: null,
+      authority_level: AuthorityLevel.GREEN,
+      dod: "Accio result submitted to StewardHQ.",
+      milestones: [
+        {
+          title: "Execution",
+          description: "Perform the requested action.",
+          tasks: [
+            {
+              title: "Execute Command",
+              description: message,
+              authority_level: AuthorityLevel.GREEN
+            }
+          ]
+        }
+      ]
     });
 
-    if (!response.ok) {
-      return { route, output: `Accio bridge returned ${response.status}. The command was not certified as executed.` };
-    }
-
-    const data = await response.json().catch(() => ({}));
     return { 
       route, 
-      output: data.response ?? data.output ?? data.message ?? "Accio accepted the command.",
-      metadata: data
+      output: `Command accepted. Accio workforce has been assigned task in Project: ${project.name} (${project.id}). Monitoring for result.`,
+      project_id: project.id
     };
   }
 
-  if (process.env.OPENAI_API_KEY) {
+  if (route === "claude") {
     if (!process.env.OPENAI_MODEL) {
       return { route: "openai" as const, output: "OpenAI is connected, but OPENAI_MODEL is not set. Choose the current production model ID before enabling live executive reasoning." };
     }
