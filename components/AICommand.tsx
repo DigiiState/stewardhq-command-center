@@ -32,19 +32,21 @@ export function AICommand() {
     setLoading(true);
     setError(null);
     try {
-      const { data: session } = await supabase.auth.getSession();
-      const { data, error: invokeError } = await supabase.functions.invoke('stewardhq-command', {
-        body: { command: input },
+      console.log("[AI COMMAND] Submitting to /api/ai...");
+      const response = await fetch("/api/ai", {
+        method: "POST",
         headers: {
-          Authorization: `Bearer ${session.session?.access_token}`
-        }
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: input }),
       });
 
-      if (invokeError) throw invokeError;
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
       setResult(data);
     } catch (err: any) {
       console.error(err);
-      setError("Failed to execute command. Please ensure you are logged in and Supabase is connected.");
+      setError(`Failed to execute command: ${err.message}`);
     } finally {
       setLoading(false);
     }
