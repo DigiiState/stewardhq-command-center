@@ -1,5 +1,7 @@
 {
 	"telemetry": {
-		"notifiedAt": "1787710951389"
+		"notifiedAt": "1787710951389",
+		"anonymousId": "4339acd578d18512d80cf1614f6a099aa262fd608431b7d457af07642b2eab98",
+		"salt": "0c2398709d172f6d655af7796f207ecc"
 	}
 }

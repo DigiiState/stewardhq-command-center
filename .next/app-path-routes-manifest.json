@@ -1,0 +1,20 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/agents/page": "/agents",
+  "/api/ai/route": "/api/ai",
+  "/api/engine/ask/route": "/api/engine/ask",
+  "/api/engine/cycle/route": "/api/engine/cycle",
+  "/api/engine/ingest/route": "/api/engine/ingest",
+  "/api/health/route": "/api/health",
+  "/approvals/page": "/approvals",
+  "/auth/callback/route": "/auth/callback",
+  "/businesses/[slug]/page": "/businesses/[slug]",
+  "/businesses/page": "/businesses",
+  "/login/page": "/login",
+  "/onboarding/page": "/onboarding",
+  "/page": "/",
+  "/reviews/page": "/reviews",
+  "/tasks/page": "/tasks",
+  "/workspaces/page": "/workspaces"
+}

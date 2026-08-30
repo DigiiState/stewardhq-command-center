@@ -1,0 +1,27 @@
+{
+  "node": {
+    "405f8772374cf410dea851689160251e98c6b85867": {
+      "workers": {
+        "app/onboarding/page": {
+          "moduleId": 23828,
+          "async": false,
+          "codeHash": null
+        }
+      },
+      "exportedName": "createOrganization",
+      "filename": "app/actions/organization.ts"
+    },
+    "40b17d3d7ec8f4d85a275e045f0026767b0adc9088": {
+      "workers": {
+        "app/onboarding/page": {
+          "moduleId": 23828,
+          "async": false,
+          "codeHash": null
+        }
+      },
+      "exportedName": "switchOrganization",
+      "filename": "app/actions/organization.ts"
+    }
+  },
+  "edge": {}
+}
