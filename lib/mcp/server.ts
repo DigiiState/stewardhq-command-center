@@ -7,6 +7,7 @@ import {
     getBusinesses,
     getDecisions 
 } from "@/lib/data/repository";
+import { routeCommand } from "@/lib/ai/router";
 import { createServiceClient } from "@/lib/supabase/service";
 
 export const server = new McpServer({
@@ -217,5 +218,66 @@ server.tool(
 
     if (error) return { content: [{ type: "text", text: `Error: ${error.message}` }], isError: true };
     return { content: [{ type: "text", text: `Agent ${agent_id} status reported as ${status}.` }] };
+  }
+);
+
+// 10. Submit StewardHQ Command
+server.tool(
+  "submit_stewardhq_command",
+  "Issue a natural language command to StewardHQ. This will automatically create a durable task if the command requires workforce execution.",
+  {
+    command: z.string(),
+  },
+  async ({ command }) => {
+    try {
+      const result = await routeCommand(command);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      };
+    } catch (e: any) {
+      return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
+    }
+  }
+);
+
+// 11. Get StewardHQ Task Status
+server.tool(
+  "get_stewardhq_task_status",
+  "Check the real-time status of a specific StewardHQ task.",
+  {
+    task_id: z.string().uuid(),
+  },
+  async ({ task_id }) => {
+    const supabase = createServiceClient();
+    const { data, error } = await supabase
+        .from("tasks")
+        .select("status, output_summary, updated_at")
+        .eq("id", task_id)
+        .single();
+
+    if (error) return { content: [{ type: "text", text: `Error: ${error.message}` }], isError: true };
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+  }
+);
+
+// 12. Get StewardHQ Result
+server.tool(
+  "get_stewardhq_result",
+  "Retrieve the final execution result and deliverables for a specific StewardHQ task.",
+  {
+    task_id: z.string().uuid(),
+  },
+  async ({ task_id }) => {
+    const supabase = createServiceClient();
+    const { data, error } = await supabase
+        .from("task_results")
+        .select("*")
+        .eq("task_id", task_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+    if (error) return { content: [{ type: "text", text: `Error: ${error.message}` }], isError: true };
+    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
   }
 );
