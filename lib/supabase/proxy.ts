@@ -44,7 +44,7 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/auth") ||
     pathname.startsWith("/api/health") ||
     pathname.startsWith("/api/mcp") ||
-    pathname.startsWith("/api/ai/ingress");
+    pathname.startsWith("/api/ai");
 
   if (!claims && !isPublicRoute) {
     const url = request.nextUrl.clone();
