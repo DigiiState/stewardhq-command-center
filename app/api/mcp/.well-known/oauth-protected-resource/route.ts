@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 /**
- * RFC 9728: OAuth Protected Resource Metadata
+ * RFC 9728: OAuth Protected Resource Metadata (Path-qualified)
  */
 export async function GET() {
   return NextResponse.json({
