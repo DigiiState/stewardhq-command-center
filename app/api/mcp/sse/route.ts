@@ -1,51 +1,49 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { server } from "@/lib/mcp/server";
 
-let transport: SSEServerTransport | null = null;
+// GLOBAL STATE (Warning: reset on cold start)
+// For true serverless persistence, this should be in Redis/Supabase.
+// For the pilot, we assume sticky sessions or single instance for the test.
+export const activeTransports = new Map<string, SSEServerTransport>();
 
 export async function GET(request: NextRequest) {
   console.log("[MCP SSE] Connection requested.");
 
-  // AUTH: Check for CHATGPT_MCP_TOKEN
   const authHeader = request.headers.get("Authorization");
   const expectedToken = process.env.CHATGPT_MCP_TOKEN;
-  
   if (expectedToken && authHeader !== `Bearer ${expectedToken}`) {
-    console.error("[MCP SSE] Unauthorized connection attempt.");
     return new Response("Unauthorized", { status: 401 });
   }
 
-  // Create transport
-  const response = new NextResponse();
-  transport = new SSEServerTransport("/api/mcp/sse", response as any);
+  const sessionId = Math.random().toString(36).substring(7);
+  const transport = new SSEServerTransport(`/api/mcp/message?sessionId=${sessionId}`, {
+      // Stub
+  } as any);
 
-  // Connect server to transport
+  activeTransports.set(sessionId, transport);
   await server.connect(transport);
 
-  console.log("[MCP SSE] Server connected to transport.");
-  return response;
-}
+  const stream = new ReadableStream({
+    start(controller) {
+      transport.onmessage = (message) => {
+        controller.enqueue(`data: ${JSON.stringify(message)}\n\n`);
+      };
+      transport.onclose = () => {
+        activeTransports.delete(sessionId);
+        controller.close();
+      };
+    },
+    cancel() {
+      activeTransports.delete(sessionId);
+    }
+  });
 
-export async function POST(request: NextRequest) {
-  console.log("[MCP SSE] Message received.");
-
-  if (!transport) {
-    console.error("[MCP SSE] No active transport session.");
-    return new Response("No active session", { status: 400 });
-  }
-
-  // AUTH: Check for CHATGPT_MCP_TOKEN
-  const authHeader = request.headers.get("Authorization");
-  const expectedToken = process.env.CHATGPT_MCP_TOKEN;
-  
-  if (expectedToken && authHeader !== `Bearer ${expectedToken}`) {
-    console.error("[MCP SSE] Unauthorized message attempt.");
-    return new Response("Unauthorized", { status: 401 });
-  }
-
-  // Pass message to transport
-  await transport.handlePostMessage(request as any, NextResponse as any);
-
-  return new Response("OK", { status: 200 });
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive",
+    },
+  });
 }

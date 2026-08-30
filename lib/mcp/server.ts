@@ -3,8 +3,9 @@ import { z } from "zod";
 import { 
     getExecutiveContext, 
     getTasks, 
-    getDecisions, 
-    getBusinesses 
+    getApprovals, 
+    getBusinesses,
+    getDecisions 
 } from "@/lib/data/repository";
 import { createServiceClient } from "@/lib/supabase/service";
 
@@ -123,17 +124,17 @@ server.tool(
   }
 );
 
-// 6. Get Decisions
+// 6. Get Approvals
 server.tool(
-  "get_decisions",
-  "Retrieve historical decisions and strategic rationale.",
+  "get_approvals",
+  "Retrieve pending approval requests.",
   {
     business_slug: z.string().optional(),
   },
   async ({ business_slug }) => {
-    const { items: decisions } = await getDecisions();
-    let filtered = decisions;
-    if (business_slug) filtered = filtered.filter(d => d.business.toLowerCase().includes(business_slug.toLowerCase()));
+    const { items: approvals } = await getApprovals();
+    let filtered = approvals;
+    if (business_slug) filtered = filtered.filter(a => a.business.toLowerCase().includes(business_slug.toLowerCase()));
     
     return {
       content: [{ type: "text", text: JSON.stringify(filtered, null, 2) }],

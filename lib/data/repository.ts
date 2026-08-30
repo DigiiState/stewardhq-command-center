@@ -378,6 +378,33 @@ export async function getRecentActivity(): Promise<{ mode: DataMode; items: UIAc
   return { mode: "live", items };
 }
 
+export async function getDecisions() {
+  if (!isSupabaseConfigured()) return { mode: "preview" as const, items: [] };
+  const { organizationId } = await liveScope();
+  if (!organizationId) return { mode: "live" as const, items: [] };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("decisions")
+    .select("id,question,decision,reason,decision_maker,effective_date,businesses(name)")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(`Unable to load decisions: ${error.message}`);
+
+  const items = (data ?? []).map((row) => ({
+    id: row.id,
+    business: relationName(row.businesses),
+    question: row.question,
+    decision: row.decision,
+    reason: row.reason ?? "",
+    decisionMaker: row.decision_maker,
+    effectiveDate: row.effective_date,
+  }));
+
+  return { mode: "live", items };
+}
+
 export async function getDashboardSnapshot() {
   if (!isSupabaseConfigured()) {
     return {
