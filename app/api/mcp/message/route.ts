@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { activeTransports } from "../sse/route";
+import { activeTransports } from "@/lib/mcp/state";
 
 export async function POST(request: NextRequest) {
   const { searchParams } = new URL(request.url);
