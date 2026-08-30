@@ -24,13 +24,17 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body),
     });
 
-    // Directly return the stream
+    // Forward the status and relevant auth headers
+    const responseHeaders = new Headers();
+    if (response.headers.has("www-authenticate")) {
+      responseHeaders.set("www-authenticate", response.headers.get("www-authenticate")!);
+    }
+    responseHeaders.set("Content-Type", response.headers.get("Content-Type") || "text/plain");
+    responseHeaders.set("Cache-Control", "no-cache");
+
     return new Response(response.body, {
       status: response.status,
-      headers: {
-        "Content-Type": response.headers.get("Content-Type") || "text/plain",
-        "Cache-Control": "no-cache",
-      }
+      headers: responseHeaders
     });
 
   } catch (e: any) {
