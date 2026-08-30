@@ -1,23 +1,36 @@
-import { NextRequest } from "next/server";
-import { activeTransports } from "@/lib/mcp/state";
+import { NextRequest, NextResponse } from "next/server";
 
+const SUPABASE_MCP_URL = "https://afnefuegygoooxaaluga.supabase.co/functions/v1/stewardhq-mcp";
+
+/**
+ * MCP Message Proxy
+ * Forwards ChatGPT messages to Supabase Stateless MCP
+ */
 export async function POST(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const sessionId = searchParams.get("sessionId");
+  const authHeader = request.headers.get("Authorization");
+  const body = await request.json();
 
-  if (!sessionId || !activeTransports.has(sessionId)) {
-    console.error(`[MCP Message] Session ${sessionId} not found.`);
-    return new Response("Invalid session", { status: 400 });
-  }
-
-  const transport = activeTransports.get(sessionId)! as any;
-  const message = await request.json();
+  console.log(`[MCP Proxy] Forwarding message: ${body.method}`);
 
   try {
-    await transport.handleMessage(message);
-    return new Response("OK", { status: 200 });
+    const response = await fetch(SUPABASE_MCP_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": authHeader || "",
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return new Response(errorText, { status: response.status });
+    }
+
+    const data = await response.json();
+    return NextResponse.json(data);
   } catch (e: any) {
-    console.error(`[MCP Message] Error: ${e.message}`);
+    console.error(`[MCP Proxy] Error: ${e.message}`);
     return new Response(e.message, { status: 500 });
   }
 }
