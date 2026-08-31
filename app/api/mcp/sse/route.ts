@@ -1,13 +1,46 @@
 import { NextRequest } from "next/server";
 
+const SUPABASE_MCP_URL = "https://afnefuegygoooxaaluga.supabase.co/functions/v1/stewardhq-mcp";
+
 /**
- * MCP SSE Statless Bridge for ChatGPT
- * Connects ChatGPT (SSE) to Supabase (JSON-RPC)
+ * MCP Unified Endpoint (Supporting SSE GET and Streamable HTTP POST)
+ * Fixed: ChatGPT POSTs to this URL after handshake.
  */
+export async function POST(request: NextRequest) {
+  const authHeader = request.headers.get("Authorization");
+  const acceptHeader = request.headers.get("Accept") || "application/json, text/event-stream";
+  const body = await request.json();
+
+  try {
+    const response = await fetch(SUPABASE_MCP_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": authHeader || "",
+        "Accept": acceptHeader,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const responseHeaders = new Headers();
+    if (response.headers.has("www-authenticate")) {
+      responseHeaders.set("www-authenticate", response.headers.get("www-authenticate")!);
+    }
+    responseHeaders.set("Content-Type", response.headers.get("Content-Type") || "text/plain");
+    responseHeaders.set("Cache-Control", "no-cache");
+    responseHeaders.set("Access-Control-Allow-Origin", "*");
+
+    return new Response(response.body, {
+      status: response.status,
+      headers: responseHeaders
+    });
+
+  } catch (e: any) {
+    return new Response(e.message, { status: 500 });
+  }
+}
+
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const token = searchParams.get("token") || request.headers.get("Authorization")?.replace("Bearer ", "");
-  
   const responseHeaders = new Headers({
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
@@ -15,16 +48,14 @@ export async function GET(request: NextRequest) {
     "Access-Control-Allow-Origin": "*",
   });
 
-  const sessionId = Math.random().toString(36).substring(7);
-
   const stream = new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder();
       
-      // 1. Send Endpoint message (per MCP SSE spec)
+      // 1. Send Endpoint message (point to self for POSTs)
       const endpointMsg = {
         type: "endpoint",
-        url: `https://stewardhq-delta.vercel.app/api/mcp/message?sessionId=${sessionId}`
+        url: "https://stewardhq-delta.vercel.app/api/mcp/sse"
       };
       controller.enqueue(encoder.encode(`data: ${JSON.stringify(endpointMsg)}\n\n`));
 
